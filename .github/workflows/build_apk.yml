@@ -1,4 +1,4 @@
-name: 自动编译安卓APK
+name: 自动编译安卓APK（免签名配置）
 run-name: 编译 ${{ inputs.branch || 'dev_v1.11.4' }} 分支的安卓安装包
 
 on:
@@ -47,7 +47,20 @@ jobs:
           channel: stable
           cache: true
 
-      # 缓存 Gradle 依赖，加速后续构建
+      # 生成一个临时的 debug keystore，并设置环境变量
+      # 这样 gradle 构建时就能找到签名信息，不会报 null 错误
+      - name: 生成临时签名密钥
+        run: |
+          keytool -genkey -v -keystore debug.keystore -alias debug \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Debug, OU=Debug, O=Debug, L=Debug, ST=Debug, C=US"
+          echo "KEYSTORE_PATH=${{ github.workspace }}/debug.keystore" >> $GITHUB_ENV
+          echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
+          echo "KEY_ALIAS=debug" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+
+      # 缓存 Gradle 文件，加速后续构建
       - name: 缓存 Gradle 文件
         uses: actions/cache@v4
         with:
@@ -73,8 +86,3 @@ jobs:
           path: simple_live_app/build/app/outputs/flutter-apk/*.apk
           retention-days: 7
           if-no-files-found: error
-
-      # 可选：清理 Gradle 缓存（节省空间，但可能减慢下次构建）
-      - name: 清理 Gradle 缓存（可选）
-        if: always()
-        run: rm -rf ~/.gradle/caches/ || true
