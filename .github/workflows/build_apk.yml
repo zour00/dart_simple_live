@@ -1,0 +1,38 @@
+name: 自动编译安卓APK
+run-name: 编译dart_simple_live安卓安装包
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+        with:
+          ref: dev_v1.11.4
+
+      - name: 配置Flutter环境
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.3'
+          channel: stable
+          cache: true
+
+      - name: 安装APP依赖
+        run: |
+          cd simple_live_app
+          flutter pub get
+
+      - name: 编译Release正式APK
+        run: |
+          cd simple_live_app
+          flutter build apk --release --no-tree-shake-icons
+
+      - name: 打包上传成品APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: 手机端成品APK
+          path: simple_live_app/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
